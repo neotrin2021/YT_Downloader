@@ -45,6 +45,38 @@ Render square (512×512 per frame is fine, downscale to 256 when sheeting).
 
 ---
 
+## Tool 0 — This repo's scripts (fastest path)
+
+`unity/FogMachine/Baking/` contains ready-made headless Blender scripts:
+
+- **`fog_noise_bake.py`** — no fluid sim needed: procedural volumetric
+  (spherical falloff x counter-rotating fBM noise) rendered with the six-sun
+  light-group rig. The noise rotation completes exactly 360 degrees over the
+  64 frames, so the flipbook **loops perfectly with no crossfade**. For
+  fog-machine-thick fog this reads the same as a real sim at flipbook
+  resolution. Works even in the PyPI `bpy` module.
+- **`bake_fog.py`** — the real Mantaflow smoke sim version of the same
+  render (needs desktop Blender, see warning below).
+- **`pack_fog.py`** — packs either bake's per-frame EXRs into the two Unity
+  sheets (`FogSixWay_Positive_8x8.png`, `FogSixWay_Negative_8x8.png`) plus an
+  animated preview GIF.
+
+Run: `blender -b -P Baking/fog_noise_bake.py` then
+`blender -b -P Baking/pack_fog.py` (or with any Python that has the `bpy`
+wheel: `python fog_noise_bake.py`). Both bakes write to `out/` next to the
+scripts.
+
+> ⚠ **Mantaflow compatibility, learned the hard way:** the fluid solver is
+> broken in the PyPI `bpy` wheels (5.0 and 4.5 both crash with
+> `LevelsetGrid has no attribute 'setConst'`) **and** in Ubuntu's
+> `apt` blender package (Debian Python-embedding flaw, crashes with
+> `PyImport_AppendInittab` on any fluid modifier). For `bake_fog.py` use an
+> **official blender.org build** on your desktop. `fog_noise_bake.py` runs
+> anywhere.
+
+The import settings below are applied automatically by
+`Editor/FogTextureImportSettings.cs` to any texture named `FogSixWay_*`.
+
 ## Tool A — Blender (free, Mantaflow)
 
 1. **Domain + emitter**: Quick Effects > Quick Smoke on a small emitter mesh,
