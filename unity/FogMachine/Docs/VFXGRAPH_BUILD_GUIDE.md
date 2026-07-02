@@ -45,14 +45,25 @@ Tick **Exposed** on every one.
   "just in case", that's exactly the choke we're avoiding.)
 - **Set Lifetime** ← `ParticleLifetime` (add ±15% randomness with a
   `Random Number` multiplied in, optional but nicer).
-- **Set Velocity from Direction & Speed (New Direction)** — or simplest:
-  - Add **Set Position (Cone / Arc Cone)**: radius ~0.1 (nozzle mouth),
-    arc 360°. This is the nozzle.
-  - Add **Set Velocity from Direction & Speed**: direction = cone direction
-    output; speed ← `EmitSpeed` (randomize ±20%).
-  - Wire `ConeAngle` into the cone's angle input (convert degrees as needed —
-    the cone block takes an angle input; multiply by `π/180` with a
-    `Multiply` node if it wants radians).
+- **The nozzle** — position + velocity, two blocks:
+  - Add **Set Position Shape (Cone / Cylinder)**: Shape Cone, Height Mode
+    Volume, **Position Mode Volume** (Surface gives a hollow ring),
+    Spawn Mode Random. Base Radius **0.1** (nozzle mouth), Height **0.5**,
+    Arc 6.28 (full 360°). In the block's Inspector make sure the
+    **Direction** composition is written — the velocity block reads it.
+  - The cone block has **no angle input** — its spread is its geometry, so
+    compute Top Radius from `ConeAngle`:
+    `Top Radius = 0.1 + 0.5 × tan(ConeAngle°)`, as nodes:
+    `ConeAngle` → Multiply (×0.01745, deg→rad) → **Tangent** → Multiply
+    (×0.5, the Height) → Add (+0.1, the Base Radius) → Top Radius port.
+    (Jet 8° ≈ 0.17 pencil; Creep 60° ≈ 0.97 trumpet.)
+  - Add **Velocity from Direction & Speed (Change Speed)** *below* the cone
+    block (block order matters — direction must be written first). It reads
+    the cone's `direction` attribute automatically; wire
+    `EmitSpeed × Random(0.8–1.2)` into **Speed**.
+    ⚠ These velocity blocks are hidden by default in Unity 6: enable
+    **Edit > Preferences > Visual Effects > Experimental Operators/Blocks**
+    first. Avoid the *(Tangent)* variant — that's orbital/vortex motion.
 - **Set Size** ← small start value (e.g. `ParticleSize × 0.3`) — puffs grow in Update.
 - **Set Angle (Z)** ← `Random Number [0, 360]` so flipbook cells don't all face the same way.
 - **Set Angular Velocity (Z)** ← `Random [-8, 8]` deg/s. Slow roll sells volume.
@@ -66,26 +77,42 @@ Tick **Exposed** on every one.
 - **Linear Drag** ← `Drag`.
 - **Force**: `(0, Buoyancy, 0)`. Negative = the fog sinks and pools like real
   chilled fog-machine output.
-- **Set Size over Life**: curve from `ParticleSize × 0.3` → `ParticleSize`,
-  fast growth in the first 20% of life, then flat. (Sample the curve, multiply
-  by `ParticleSize`.)
-- **Flipbook Player** block: mode Motion Vectors if your bake has them,
-  frame rate ~16 (motion vectors make 16 look like 60; without MVs use ~30
-  and Blend mode = Linear).
+- **Size over life** — don't use the *Set Size Over Life* block (its curve
+  port can't be scaled by an exposed property). Use a plain **Set Size**
+  block fed by a hand-built chain:
+  - `Get Attribute: age` and `Get Attribute: lifetime` → **Divide** (life
+    ratio, 0→1)
+  - Divide → the Time input of a **Sample Curve** node. Curve keys:
+    (0, 0.3), (0.2, 1.0) with flat tangent, (1, 1.0) — fast growth in the
+    first 20% of life, then flat.
+  - Sample Curve output × `ParticleSize` (Multiply) → Set Size's Size port.
+  This replaces any Set Size in Initialize.
+- **Flipbook Player** block: Mode **Frame Rate**, Frame Rate **Constant 16**
+  (or Random 13–19 for per-puff variety). Note this block only advances the
+  frame index — frame *blending* / motion vectors are configured on the
+  Output context's **UV Mode** (§6), not here. Without motion vectors, use
+  ~30 fps instead.
 
 ## 6. Output — the part that matters
 
 Delete the default output. Add:
 
-> **Output Particle Six-Way Smoke Lit Quad**
-> (in the node search: "Six Way")
+> **Output Particle URP Lit Quad**
+
+Then select the output context and, in the graph **Inspector** panel, change
+**Material Type → Six Way Smoke Lit**. (There is no separate "Six-Way" output
+node in Unity 6 — six-way is a material type on the URP Lit output. The
+lightmap slots appear once you switch it.)
 
 Settings:
 
 - **Positive/Negative axes lightmaps**: your two baked 6-way textures
-  (see BAKING_GUIDE.md). Flipbook layout: set **UV Mode = Flipbook**,
-  Flip Book Size = 8×8 (or whatever you baked).
-- **Use Motion Vectors**: on, if baked.
+  (see BAKING_GUIDE.md).
+- **UV Mode** (in the context Inspector): **Flipbook Motion Blend** if your
+  bake has motion vectors (a motion-vector map slot appears), else
+  **Flipbook Blend** (linear crossfade). Plain **Flipbook** hard-cuts frames
+  and visibly steps at 16 fps — avoid. Flip Book Size = 8×8 (or whatever
+  you baked).
 - **Blend Mode: Alpha.**
 - **Soft Particles: ON**, fade distance ~0.5–1 m. Non-negotiable for fog —
   this is what melts it into floors and walls instead of hard-clipping.
