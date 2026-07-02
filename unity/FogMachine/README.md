@@ -31,9 +31,12 @@ unity/FogMachine/
    (asmdefs included — it compiles in isolation).
 2. Build the VFX Graph per `Docs/VFXGRAPH_BUILD_GUIDE.md`
    (a `.vfx` asset can't be shipped as text — the guide *is* the asset).
-3. Bake or grab a flipbook per `Docs/BAKING_GUIDE.md`. To test the plumbing
-   before you have a bake, any smoke flipbook + plain Lit output works;
-   swap to Six-Way when the real textures land.
+3. **Baked textures are included**: `Textures/FogSixWay_Positive_8x8.png` and
+   `FogSixWay_Negative_8x8.png` (64-frame seamless loop, 8x8, alpha in the
+   positive sheet; import settings auto-applied by
+   `Editor/FogTextureImportSettings.cs`). Assign the pair in the Six-Way
+   output. No motion vectors — use UV Mode Flipbook Blend at ~30 fps.
+   To bake variants, see `Docs/BAKING_GUIDE.md` + `Baking/`.
 4. GameObject → **Visual Effect** (assign the graph) → **Fog Machine
    Controller** → optionally **Fog Performance Governor**.
 5. Play. Use the inspector Control Desk, or from code:

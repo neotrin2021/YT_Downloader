@@ -22,10 +22,11 @@ def load_gray(path):
     """Load one EXR, return HxW float array (channel 0), flipped to top-down."""
     img = bpy.data.images.load(path)
     w, h = img.size
-    buf = np.empty(w * h * img.channels, dtype=np.float32)
+    ch = img.channels
+    buf = np.empty(w * h * ch, dtype=np.float32)
     img.pixels.foreach_get(buf)
     bpy.data.images.remove(img)
-    return buf.reshape(h, w, img.channels)[::-1, :, 0]   # blender rows are bottom-up
+    return buf.reshape(h, w, ch)[::-1, :, 0]   # blender rows are bottom-up
 
 def box_half(a):
     """2x downscale by box filter."""
@@ -54,10 +55,20 @@ def save_png(sheet, path):
 
 print("packing positive sheet (+X +Y +Z / alpha)")
 pos = build_sheet(["px", "py", "pz"])
-save_png(pos, os.path.join(TEX, "FogSixWay_Positive_8x8.png"))
-
 print("packing negative sheet (-X -Y -Z / alpha)")
 neg = build_sheet(["nx", "ny", "nz"])
+
+# Normalize all six light channels by ONE shared factor: dense volumes
+# transmit little light, so raw values hug zero. A single factor keeps the
+# directional ratios (the whole point of six-way) while using the full
+# 8-bit range; re-scale with the light intensity in Unity.
+peak = max(pos[..., :3].max(), neg[..., :3].max())
+k = 0.95 / peak if peak > 0 else 1.0
+pos[..., :3] *= k
+neg[..., :3] *= k
+print(f"normalized light channels: peak {peak:.4f} -> 0.95 (x{k:.2f})")
+
+save_png(pos, os.path.join(TEX, "FogSixWay_Positive_8x8.png"))
 save_png(neg, os.path.join(TEX, "FogSixWay_Negative_8x8.png"))
 
 print("building preview gif")
