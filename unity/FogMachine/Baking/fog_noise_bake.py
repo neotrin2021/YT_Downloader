@@ -94,8 +94,8 @@ nt.links.new(scale2.outputs[0], mixn.inputs[2])
 length = node("ShaderNodeVectorMath", operation="LENGTH")
 nt.links.new(texco.outputs["Object"], length.inputs[0])
 fall = node("ShaderNodeMapRange")
-fall.inputs["From Min"].default_value = 0.55     # solid core
-fall.inputs["From Max"].default_value = 1.45     # feathered edge
+fall.inputs["From Min"].default_value = 0.25     # small solid core
+fall.inputs["From Max"].default_value = 1.55     # very wide feather: no bubble rim
 fall.inputs["To Min"].default_value = 1.0
 fall.inputs["To Max"].default_value = 0.0
 nt.links.new(length.outputs["Value"], fall.inputs["Value"])
@@ -103,8 +103,8 @@ nt.links.new(length.outputs["Value"], fall.inputs["Value"])
 # Carve billow shape: noise gates the falloff, smoothstep-ish contrast.
 gate = node("ShaderNodeMapRange")
 gate.interpolation_type = "SMOOTHSTEP"
-gate.inputs["From Min"].default_value = 0.32
-gate.inputs["From Max"].default_value = 0.72
+gate.inputs["From Min"].default_value = 0.20     # noise eats deep into the edge
+gate.inputs["From Max"].default_value = 0.95     # long translucent gradient, no hard shell
 nt.links.new(mixn.outputs[0], gate.inputs["Value"])
 
 dens = node("ShaderNodeMath", operation="MULTIPLY")
@@ -112,7 +112,7 @@ nt.links.new(fall.outputs["Result"], dens.inputs[0])
 nt.links.new(gate.outputs["Result"], dens.inputs[1])
 
 dscale = node("ShaderNodeMath", operation="MULTIPLY")
-dscale.inputs[1].default_value = 22.0            # fog-machine thickness
+dscale.inputs[1].default_value = 15.0            # thick but translucent enough to overlap-blend
 nt.links.new(dens.outputs[0], dscale.inputs[0])
 
 pv = node("ShaderNodeVolumePrincipled")
